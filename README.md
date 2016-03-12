@@ -9,7 +9,7 @@ CoinParty paper
 https://www.comsys.rwth-aachen.de/fileadmin/papers/2015/2015-ziegeldorf-codaspy-coinparty.pdf
 
 `pyelliptic`: python elliptic curve library / OpenSSL wrapper
-https://github.com/yann2192/pyelliptic
+ - https://github.com/yann2192/pyelliptic
 
 #### Implementing c1_generate_addresses (Max)
 

@@ -1,8 +1,8 @@
 class State:
 
     def __init__(self):
-        self.mixing_peers = set()
-        self.input_peers = set()
+        self.mixing_peers = []
+        self.input_peers = []
 
 
 class MixingPeer:
