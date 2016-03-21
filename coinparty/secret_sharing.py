@@ -28,7 +28,7 @@ class BaseScheme:
     def generate_random_share:
         SecureRandom.random_bytes(secret_size / 8).unpack('B*')[0].to_i(2)
 
-    def parties:
+    def parties():
         parties = recovery_groups.inject(:+).freeze
 
 
@@ -40,57 +40,66 @@ require_relative './base_scheme'
 # Replicated secret sharing scheme
 class ReplicatedScheme(BaseScheme):
     def recover_secret(*shares):
-        xor_binary = binify_share(shares.flatten.reduce { |a, e| a ^ e })
-        xor_binary == secret ? Base64.decode64(xor_binary) : nil
+        # NOTE: Whether the following XOR (^) needs to be bitwise or boolean is undetermined
+        xor_binary = binify_share(reduce(lambda a, e: a ^ e, shares))
+        if xor_binary == secret:
+            Base64.decode64(xor_binary)
 
     def maximally_non_qualifying:
-        mnq ||= compute_maximally_non_qualifying.freeze
+        if not self.mnq:
+            self.mnq = compute_maximally_non_qualifying.freeze()
 
-    private
+    # NOTE: The following methods should be private
 
     def compute_maximally_non_qualifying(base_group = Set.new):
-        next_non_qualifying = (parties - base_group).
-            map { |party| base_group + [party] }.
-            reject { |group| is_qualifying(group) }
+        next_non_qualifying = map(lambdas party: base_group + [party], parties - base_group)
 
-        return [base_group] if next_non_qualifying.empty?
+        next_non_qualifying = [group for group in next_non_qualifying if not is_qualifying(group)]
 
-        next_non_qualifying.
-            map { |group| compute_maximally_non_qualifying(group) }.
-            inject(Set.new, :+)
+        if next_non_qualifying.empty:
+            return [base_group]
+
+        else:
+            next_non_qualifying = map(lambda group: compute_maximally_non_qualifying(group), next_non_qualifying)
+            return reduce(lambda x, y: x + y, next_non_qualifying, Set.new)
 
     def compute_shares:
-        shares = Array.new(maximally_non_qualifying.size) { generate_random_share }
-        shares.pop # remove last random
-        shares << (shares.inject(0, :^) ^ secret.unpack('B*').first.to_i(2))
+        shares = [self.generate_random_share() for _ in range(maximally_non_qualifying.size)]
+        shares.pop() # remove last random
+        shares << (reduce(lambda x, y: x ^ y, shares) ^ secret.unpack('B*').first.to_i(2))
 
-        maximally_non_qualifying.zip(shares).
-            each_with_object({}) do |(mnq, share), party_shares|
+        maximally_non_qualifying = zip(maximally_non_qualifying, shares)
+        party_shares = {}
+        for mnq, share in maximally_non_qualifying:
             b = parties - mnq
-            b.each { |party| party_shares[party] = [*party_shares[party], share] }
+            reduce(lambda party: party_shares[party] = [*party_shares[party], share], b)
 
 
 require 'base64'
 require 'securerandom'
 require_relative './base_scheme'
 
+
 # Informationally secure secret sharing device.
 class ItoNishizekiSeitoScheme(BaseScheme):
 
     # Standard XOR of all shares to recover secret. Very much like a one-time pad.
     def recover_secret(*shares):
-        xor_binary = binify_share(shares.reduce { |a, e| a ^ e })
-        xor_binary == secret ? Base64.decode64(xor_binary) : nil
+        xor_binary = binify_share(reduce(lambda a, e: a ^ e, shares))
+        if xor_binary == secret:
+            Base64.decode64(xor_binary)
 
-    private
+    # NOTE: The following methods should be private
 
     def compute_shares():
-        initial_shares = Hash[parties.map { |p| [p, []] }]
+        initial_shares = {}
+        for p in parties:
+            parties[p] = [p, []]
 
-        recovery_groups.each_with_object(initial_shares) do |group, shares|
-            random_shares = group.first(group.size - 1).map { |_| generate_random_share }
-            det_share = random_shares.
-                reduce(secret.unpack('B*').first.to_i(2)) { |a, e| a ^ e }
+        for group, shares in recovery_groups:
+            random_shares = group.first(group.size - 1)
+            random_shares = map(lambda _: self.generate_random_share(), random_shares)
+            det_share = reduce(lambda a, e: a ^ e, secret.unpack('B*').first.to_i(2) + random_shares)
 
             group_shares = random_shares.concat([det_share])
-            group_shares.zip(group).each { |share, party| shares[party].push(share) }
+            map(lambda share, party: shares[party].push(share), zip(group_shares, group))
