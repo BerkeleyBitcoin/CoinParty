@@ -1,0 +1,3 @@
+aiozmq==0.7.1
+msgpack-python==0.4.7
+pyzmq==15.2.0
