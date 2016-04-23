@@ -25,6 +25,10 @@ Replicated Secret Sharing - "Secret Sharing Scheme Realizing General Access Stru
 
 Only known implementation of replicated secret sharing, in Ruby:
 - https://github.com/lawrencejones/crypto/blob/master/lib/secret_sharing/replicated_scheme.rb
+
+Outdated Multiparty Computation Library
+- http://viff.dk/
+
 Ruby in 20 Minutes:
 - https://www.ruby-lang.org/en/documentation/quickstart/
 
